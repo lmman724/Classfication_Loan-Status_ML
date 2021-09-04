@@ -296,10 +296,13 @@ df_data_model = pd.DataFrame(data_model, columns = ["Model", "F1 Score", "Jaccar
 df_data_model
 
 
-sns.barplot(x = "Model", y = "F1 Score", data = df_date_model)
+sns.barplot(x = "Model", y = "F1 Score", data = df_data_model)
 
 
-sns.barplot(x = "Model", y = "Jaccard Score", data = df_date_model)
+sns.barplot(x = "Model", y = "Jaccard Score", data = df_data_model)
 
 
-sns.barplot(x = "Model", y = "Log Loss Score", data = df_date_model)
+sns.barplot(x = "Model", y = "Log Loss Score", data = df_data_model)
+
+
+
