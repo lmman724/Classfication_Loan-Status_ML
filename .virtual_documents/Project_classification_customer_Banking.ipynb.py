@@ -13,6 +13,7 @@ from sklearn.metrics import jaccard_score
 from sklearn.metrics import log_loss
 from sklearn.metrics import classification_report
 from sklearn.metrics import plot_confusion_matrix
+from sklearn.metrics import accuracy_score
 
 print("All library was imported")
 
@@ -95,8 +96,7 @@ sns.countplot(x = "education", hue = "loan_status", data = df_education)
 
 df_groupby_edu = (df_education.groupby(["education"])['loan_status']
                   .value_counts(normalize = True))
-df_groupby_edu
-                  
+df_groupby_edu                
 
 
 df_terms = df[["terms", "loan_status"]]
@@ -117,12 +117,6 @@ sns.countplot(x = "terms", hue = "education", data = df_terms_education)
 
 df_terms_education_groupby = df_terms_education.groupby(["terms"])["education"].value_counts(normalize = True)
 df_terms_education_groupby
-
-
-df_terms_gender = df[["terms", "Gender"]]
-
-
-sns.countplot(x = "terms", hue = "Gender", data = df_terms_gender)
 
 
 df["Gender"] = df["Gender"].replace(to_replace = ["male", "female"], value = [0, 1])
@@ -195,8 +189,36 @@ plt.tight_layout()
 plt.show()
 
 
-k = 4
-KNN_offical = KNeighborsClassifier(n_neighbors = 4)
+from sklearn.model_selection import RepeatedStratifiedKFold
+from sklearn.model_selection import GridSearchCV
+
+
+# define models and parameters
+KNN = KNeighborsClassifier()
+n_neighbors = range(1, 10, 1)
+weights = ['uniform', 'distance']
+metrics = ['euclidean', 'manhattan', 'minkowski']
+
+# define grid search
+grid = dict(n_neighbors=n_neighbors, 
+            weights=weights, 
+            metric=metrics)
+
+cv = RepeatedStratifiedKFold(n_splits=10, n_repeats=3, random_state=1)
+
+grid_search = GridSearchCV(estimator=KNN, 
+                           param_grid=grid, 
+                           n_jobs=-1, 
+                           cv=cv, 
+                           scoring='f1',
+                           error_score=0)
+
+grid_result = grid_search.fit(x_train, y_train)
+
+print("Best: get_ipython().run_line_magic("f", " using %s\" % (grid_result.best_score_, grid_result.best_params_))")
+
+
+KNN_offical = KNeighborsClassifier(n_neighbors = 5, metric = "manhattan", weights = 'uniform')
 KNN_model_official = KNN_offical.fit(x_train, y_train)
 
 y_pred_KNN = KNN_model_official.predict(x_test)
@@ -224,11 +246,14 @@ tree_model = decision_tree.fit(x_train, y_train)
 y_pred_tree = tree_model.predict(x_test)
 
 
-plt.figure(figsize=(12,8))
+plt.figure(figsize=(15,12))
 
 from sklearn import tree
 
 tree.plot_tree(tree_model.fit(x_train, y_train))
+
+
+print("The jacard score in Decision tree model  ",accuracy_score(y_test, y_pred_tree))
 
 
 f1_score_tree = f1_score(y_test, y_pred_tree)
@@ -244,12 +269,38 @@ print("Log loss value in Decision tree model:", round(log_loss_tree, 4))
 confusion_matrix_tree = plot_confusion_matrix(tree_model, x_test, y_test)
 
 
-from sklearn import svm
+from sklearn.svm import SVC
 
-svm = svm.SVC(C = 3, kernel = "rbf")
-SVM_model = svm.fit(x_train, y_train)
+svm = SVC(C = 3, kernel = "rbf")
 
-y_pred_svm = SVM_model.predict(x_test)
+SVM_model_test = svm.fit(x_train, y_train)
+
+y_pred_svm_test = SVM_model_test.predict(x_test)
+
+
+print("The jacard score in SVM model  ",accuracy_score(y_test, y_pred_svm_test))
+
+
+param_grid = {'C': [0.01, 0.1, 0.5, 1,3, 5, 10], 
+              'kernel': ["rbf", "linear", "poly"]}
+SVM_model_grid = SVC()
+
+grid_SVM = GridSearchCV(SVM_model_grid, 
+                        param_grid, 
+                        refit = True, 
+                        verbose = 3,
+                        scoring = "f1")
+  
+grid_SVM.fit(x_train, y_train)
+
+print("Best: get_ipython().run_line_magic("f", " using %s\" % (grid_SVM.best_score_, grid_SVM.best_params_))")
+
+
+svm_model = SVC(C = 5, kernel = "poly")
+
+svm_model.fit(x_train, y_train)
+
+y_pred_svm =svm_model.predict(x_test)
 
 
 f1_score_svm = f1_score(y_test, y_pred_svm)
@@ -262,13 +313,50 @@ print("Jaccard score value in SVM model:", round(jaccard_score_svm, 4))
 print("Log loss value in SVM model:", round(log_loss_svm, 4))
 
 
-confusion_matrix_svm = plot_confusion_matrix(SVM_model, x_test, y_test)
+confusion_matrix_svm = plot_confusion_matrix(svm_model, x_test, y_test)
 
 
 from sklearn.linear_model import LogisticRegression
 log_reg = LogisticRegression(C = 3, solver = "liblinear")
 
-log_reg_model = log_reg.fit(x_train, y_train)
+log_reg_model_test = log_reg.fit(x_train, y_train)
+
+y_pred_logistic_test = log_reg_model_test.predict(x_test)
+
+
+print("The jacard score in Logistic Regression model  ",accuracy_score(y_test, y_pred_logistic_test))
+
+
+model_logistic = LogisticRegression()
+
+solvers = ['newton-cg', 'lbfgs', 'liblinear']
+
+penalty = ['l2']
+
+c_values = [0.01, 0.1, 0.5, 1, 2, 5, 10]
+
+# define grid search
+grid = dict(solver = solvers, penalty = penalty, C = c_values)
+
+cv = RepeatedStratifiedKFold(n_splits = 10, n_repeats = 3, random_state  =1)
+
+grid_search = GridSearchCV(estimator = model_logistic, 
+                           param_grid = grid, 
+                           n_jobs = -1, 
+                           cv = cv,
+                           refit = True,
+                           scoring = 'f1',
+                           verbose = 3)
+
+grid_result_logistic = grid_search.fit(x_train, y_train)
+
+print("Best: get_ipython().run_line_magic("f", " using %s\" % (grid_result_logistic.best_score_, grid_result_logistic.best_params_))")
+
+
+
+log_reg_model = LogisticRegression(C = 0.5, solver ="liblinear", penalty = 'l2')
+
+log_reg_model.fit(x_train, y_train)
 
 y_pred_logistic = log_reg_model.predict(x_test)
 
@@ -284,6 +372,7 @@ print("Log loss value in logistic regression model:", round(log_loss_logistic, 4
 
 
 confusion_matrix_logistic = plot_confusion_matrix(log_reg_model, x_test, y_test)
+
 
 
 data_model= [["KNN", f1_score_KNN, jaccard_score_KNN, log_loss_KNN],
@@ -303,6 +392,3 @@ sns.barplot(x = "Model", y = "Jaccard Score", data = df_data_model)
 
 
 sns.barplot(x = "Model", y = "Log Loss Score", data = df_data_model)
-
-
-
